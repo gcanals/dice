@@ -1,9 +1,5 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
 /**
  * Description of Categorie
@@ -12,7 +8,17 @@
  */
 
 class Categorie extends \dice\model\Model {
-    //put your code here
+    protected static $_defaultMapperClass = 'CategorieMapper';
+    
+    public function __construct(\dice\mapper\iDataMapper $dm=null) {
+        parent::__construct($dm);
+        $this->_mname=__CLASS__;    
+       
+    }
+    
+    public function getArticles() {
+        return Article::find_many(array('conditions'=>array('id_categ'=>$this->getOid())));
+    }
 }
 
 ?>

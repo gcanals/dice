@@ -20,10 +20,11 @@ class ConnectionFactory {
 
   /**
    *   makeConnection() : fabrique une instance PDO 
-   *
-   *   
    *   Charge le fichier de configuration
+   *   
+   *   @api
    *   @access public
+   *   @params String $conf : le nom de la configuration à utiliser dans le fichier de config
    *   @return une connexion :  un nouvel objet PDO 
    *                            ou un lien mongo
    *                            ou False en cas d'erreur

@@ -6,20 +6,18 @@
  *
  * @author canals
  */
-//use dice\model ;
 
 class Article extends dice\model\Model {
     
     protected static $_defaultMapperClass = 'ArticleMapper';
     
     public function __construct(\dice\mapper\iDataMapper $dm=null) {
-        //self::setDefaultMapperClass('ArticleMapper');
         parent::__construct($dm);
-        $this->_mname=__CLASS__;    
-        $this->_a=array('id'=>'number','nom'=>'string', 
-                          'descr'=>'string', 'tarif'=>'number',
-                           'id_categ'=>'number');
-       
+        $this->_mname=__CLASS__;        
+    }
+    
+    public function getCategorie() {
+        return Categorie::find_one(array('conditions'=> array('id'=> $this->getAttr('id_categ'))));
     }
    
 }

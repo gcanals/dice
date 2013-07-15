@@ -13,11 +13,9 @@ namespace dice\mapper ;
 /**
  *  La classe SQLMapper
  *
- *  La Classe SQLMapper est un DataMapper pour une base SQL
+ *  La Classe SQLMapper est un DAO générique pour une base SQL
  *  Les objets mappés doivent implanter l'interface iDataMappable
- *  Ce mapper est simpliste : il ne mappe pas correctement pas les objets
- *  contenant un tableau et lorsque un objet contient une référence vers un autre objet
- *  le mapper mappe en utilisant l'oid de l'objet référencé
+
  *
  *  @package model
  */
@@ -100,7 +98,12 @@ abstract class SQLMapper implements iDataMapper {
         const   SINGLE = 0;
         const   MULTI = 1;
         
-
+    /**
+     * the generic constructor: receives and store a connexion to the db or creates
+     * it by calling the connexion factory
+     * 
+     * @param type $connexion a ressource link to the db
+     */
     public function __construct($connexion=null) {
         if (!is_null($connexion)) {
             $this->_db=$connexion;
@@ -113,7 +116,12 @@ abstract class SQLMapper implements iDataMapper {
     
     
    /**
-    * static methods for configuration at the class level
+    * static methods for DB configuration at the class level
+    * useful to override the configuration at the Dice level (DiceConfigure)
+    * and to define a per-class db connection
+    * 
+    * @api
+    * @params String $conf le nom de la configuration 
     */
     
     public static function setDefaultDBConf($conf) {
@@ -125,15 +133,34 @@ abstract class SQLMapper implements iDataMapper {
         return \DiceConfigure::getDefaultDBConf()  ;
     }
     
+    
+    /**
+     * Teste la validité d'un nom d'attribut
+     * en vérifiant sa présence dans le tableau des attributs
+     * 
+     * @api
+     * @param String $attname
+     * @return boolean true si le nom de l'attribut est correct, false sinon
+     */
+    public function isAValidAttributeName($attname) {
+        if (array_key_exists( $attname, $this->_a)) return true;
+        return false;
+    }
+    
     /**
      * returns the last executed query, as a string
+     * useful for testing/debugging/logging
+     * 
+     * @api
      * @return String last executed query
      */
     public function get_last_query() {
         return $this->_last_query;
     }
     /**
-     * returns the last executed query parameters, 
+     * returns the last executed query parameters,
+     * 
+     * @api 
      * @return Array last executed query parameters
      */
     public function get_last_query_params() {
@@ -143,6 +170,8 @@ abstract class SQLMapper implements iDataMapper {
      * returns the last PDOstatement, useful for
      * low level operations that are outside the mapper
      * e.g. rowCount()
+     * 
+     * @api
      * @return PDOStatement last statement
      */
     public function get_last_statement() {
@@ -152,6 +181,8 @@ abstract class SQLMapper implements iDataMapper {
     /**
      * execute : execute a query with the given parameters
      * log it as a string if needed
+     * 
+     * @api
      * @param String $query the sql query to be executed, with placeholders 
      * @param Array $parameters the parameters to be used
      * @return boolean true or false
@@ -173,7 +204,10 @@ abstract class SQLMapper implements iDataMapper {
    *
    *   Insère l'objet comme une nouvelle ligne dans la table
    *   
+   *   @api
    *   @return iDataMappable objet métier inséré dans la base
+   *   @param \dice\model\Model $m l'objet métier à insérer
+   *   @thows MapperException si la requête échoue pur une raison quelconque
    */	
 
     public function _insert (\dice\model\Model $m) {
@@ -195,10 +229,7 @@ abstract class SQLMapper implements iDataMapper {
       $values_query .= ")";  
       
      $insert_query = $into_query . " " . $values_query ;  
-     //$dbcon = $this->_db;
      try {
-        
-        //$st = $dbcon->prepare($insert_query) ;
   
         $r = $this->_execute($insert_query, $values_array);
         $m->setOid( $this->_db->lastInsertId($this->_tname) );
@@ -215,6 +246,10 @@ abstract class SQLMapper implements iDataMapper {
    *
    *   Supprime la ligne dans la table corrsepondant à l'objet passé
    *   L'objet doit posséder un OID
+  * 
+  *   @api
+  *   @param \dice\model\Model $m the model to be deleted in the database
+  *   @thows MaperException if the object id is undefined or if the delete query fails for some reason
    */
  public function _delete(\dice\model\Model $m) {
 
@@ -223,11 +258,8 @@ abstract class SQLMapper implements iDataMapper {
     } 
     
     $del_query = "delete from ". $this->_tname ." where " . $this->_toid . "= ?"; 
-    
-    //$dbcon = $this->_db;
-    
+
     try {
-        //$st = $dbcon->prepare($del_query) ;
         $r = $this->_execute($del_query,array($m->getOid() ));
     } catch (\PDOException $e)
       {
@@ -245,6 +277,9 @@ abstract class SQLMapper implements iDataMapper {
    *   Update de la ligne de la base correspondant à  l'objet passé
    *   
    *   @return int nombre de lignes mises à jour 
+   *   @param \dice\model\Model $m l'objet métier à mettre à jour
+   *   @throws MapperException si l'objet n'a pas d'ID ou si la requête échoue 
+   *   pour une raison quelconque 
    */							
  public function _update(\dice\model\Model $m) {
      
@@ -283,9 +318,10 @@ abstract class SQLMapper implements iDataMapper {
      * $params['orders']['orderby'] = 'att1, att2 ..'
      * $params['orders']['ord'] = SQLMapper::ORDER_ASC / SQLMapper::ORDER_DESC
      * 
-     * 
+     * @api
      * @param Array $params 
      * @return Array renvoie le tableau d'objet correspondant au résultat de la requête
+    *  @throws MapperException en cas d'erreur dans l'execution de la requête
      */
     
     
@@ -297,7 +333,6 @@ abstract class SQLMapper implements iDataMapper {
             $params['conditions']=array($this->_toid => $args);
         } else $params=$args ;
 
-        //if (is_null( $params['conditions'])) return $this->findAll($params['orders']) ;
         
         
         $query = "select * from ".$this->_tname ;
@@ -329,12 +364,12 @@ abstract class SQLMapper implements iDataMapper {
         }
          
         try{
-            //$sth=$this->_db->prepare($query);
+            
             $this->_execute($query, $bind_val);
         }
         catch(\PDOException $e){
             echo $e->__toString();
-            exit();
+            throw new MapperException($e->getMessage());
         }
 	$all = array();
 	if ($this->_last_statement->rowCount() < 1) return null ;

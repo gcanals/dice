@@ -15,7 +15,7 @@ namespace dice\model ;
  *  La classe Model
  *
  *  La Classe DBModel réalise un Active Record Générique pour le stockage 
- * elle utilise un mapper pour l'interface avec le stockage
+ *  elle utilise un mapper (DAO)pour l'interface avec le stockage
  *  Cette classe est faite pour être sous-classée
  *
  *  @package model
@@ -35,7 +35,7 @@ abstract class Model {
         
         
         /**
-	 *  type de mapper par défaut, a utiliser s'il 
+	 *  type de mapper par défaut, utilisé s'il 
          * n'est pas fourni au constructeur
          *  
   	 *  @access protected
@@ -59,30 +59,24 @@ abstract class Model {
 	 */
 	protected $_mapper ;
  
-	/**#@+
-	 *  @access protected
-	 *  @var array
-	 */ 
-        
-        /**
-          *  tableau des attributs : attname=>type
-          */
-	protected $_a = array();
+	
 
 	 /**
           *  tableau des valeur : attname=>val
+          * 
+          * @access protected
+	  *  @var array
           */
 	public $_v = array();
 
-        /**#@-*/
         
         /**
-	 *  attribut identifiant du model
+	 *  attribut identifiant du modele
          *  
   	 *  @access protected
 	 *  @var String
 	 */
-        public $_oid ='id';
+        protected $_oid ='id';
         
 
 
@@ -93,6 +87,10 @@ abstract class Model {
    *  Constructeur d'objet
    *
    *  fabrique un nouvel objet vide
+   * 
+   * @api
+   * @param \dice\mapper\iDataMapper $dm le maper à utiliser pour ce modèle
+   * en cas de défaut, construit un mapper en utilisant la classe par défaut
    */
   public function __construct(\dice\mapper\iDataMapper $dm =null) {
        
@@ -107,6 +105,11 @@ abstract class Model {
 
   /**
    * static methods for default mapper management
+   * permet de définir le nom de la classe à utiliser par défaut pour réaliser 
+   * le map vers la BD
+   * 
+   * @api
+   * @param string $classname nom de la classe à utiliser
    */
   public static function setDefaultMapperClass($classname){
       static::$_defaultMapperClass=$classname;
@@ -119,11 +122,12 @@ abstract class Model {
   /**
    *  Magic pour imprimer
    *
-   *  Fonction Magic retournant une chaine de caract?res imprimable
+   *  Fonction Magic retournant une chaine de caracteres imprimable
    *  pour imprimer facilement un model
    *
-   *   @access public
-   *   @return String
+   *   
+   * @access public
+   * @return String
    */
   public function __toString() {
     $string=  "[". $this->_mname ."::". (isset($this->_v[$this->_oid])?$this->_v[$this->_oid]:null). "]" ; 
@@ -133,8 +137,10 @@ abstract class Model {
   }
   
   /**
-   * json serialization
+   * json serialization : retoune un objet json construit à partir des attributs
+   * de l'objet métier
    * 
+   * @api
    * @access public
    * @return string
    */
@@ -147,34 +153,37 @@ abstract class Model {
    *   Getter pour OID
    *
    *   retourne l'identifiant d'objet
+  * 
+  *    @api
    *   @access public
    *   @return int
    */
   public function getOid() {
+     if (!array_key_exists($this->_oid, $this->_v)) return null;
       
-      if (!array_key_exists($this->_oid, $this->_a))
-          throw new ModelException("undefined object id for model ".
-                                    $this->_mname, 128);
-      if (!array_key_exists($this->_oid, $this->_v)) return null;
-      
-      return $this->_v[$this->_oid];
+     return $this->_v[$this->_oid];
     } 
+    
  /**
    *   Setter pour OID
    *
    *   retourne l'identifiant d'objet
-   *   @access public
+  * 
+  *  @api
+   * @access public
+  *  @param mixed $id identifiant de l'objet
    */
   public function setOid($id) {
-      if (!array_key_exists($this->_oid, $this->_a))
-          throw new ModelException("undefined object id for model ".
-                                    $this->_mname, 128);
+ 
 	$this->_v[$this->_oid]=$id;
     } 
+    
  /**
    *   Getter pour ModelName
    *
    *   retourne le nom du model
+  * 
+  *   @api
    *   @access public
    *   @return String
    */
@@ -187,12 +196,17 @@ abstract class Model {
    *   Getter pour attributes
    *
    *   retourne lla liste des attributs du model
+ * 
+ *     @api
    *   @access public
    *   @return Array
-   */
+ * 
+ */
+   
   public function getAttributes() {
-      return $this->_a;
+      return array_keys($this->_v);
     } 
+ 
  
     /**
    *   Getter pour valeurs
@@ -211,17 +225,16 @@ abstract class Model {
    *   fonction d'acc?s aux attributs d'un objet.
    *   Recoit en paramètre le nom de l'attribut accédé
    *   et retourne sa valeur.
-   *  
+   *   
+   *   @api
    *   @access public
    *   @param String $attr_name attribute name 
    *   @return mixed
    */
   public function getAttr($attr_name) {
-    if (array_key_exists( $attr_name, $this->_a)) { 
+  
       return (array_key_exists($attr_name, $this->_v) ? $this->_v[$attr_name]:null);
-    } 
-    $emess = $this->_mname . ": unknown attribute $attr_name (getAttr)";
-    throw new ModelException($emess, 45);
+
   }
   
     /**
@@ -236,11 +249,9 @@ abstract class Model {
    *   @return mixed
    */
   public function __get($attr_name) {
-    if (array_key_exists( $attr_name, $this->_a)) { 
+ 
       return (array_key_exists($attr_name, $this->_v) ? $this->_v[$attr_name]:null);
-    } 
-    $emess = $this->_mname . ": unknown attribute $attr_name (getAttr)";
-    throw new ModelException($emess, 45);
+ 
   }
   
   
@@ -248,15 +259,16 @@ abstract class Model {
    *   Setter générique
    *
    *   fonction de modification des attributs d'un objet.
-   *   Re?oit en param?tre le nom de l'attribut modifi? et la nouvelle valeur
+   *   Recoit en parametre le nom de l'attribut modifie et la nouvelle valeur
    *  
+   *   @api 
    *   @access public
    *   @param String $attr_name attribute name 
    *   @param mixed $attr_val attribute value
    *   @return mixed new attribute value
    */
   public function setAttr($attr_name, $attr_val) {
-    if (array_key_exists( $attr_name, $this->_a)) {
+    if ( $this->_mapper->isAValidAttributeName($attr_name))  {
       $this->_v[$attr_name]=$attr_val; 
       return $this->_v[$attr_name];
     } 
@@ -277,7 +289,7 @@ abstract class Model {
    *   @return mixed new attribute value
    */
   public function __set($attr_name, $attr_val) {
-    if (array_key_exists( $attr_name, $this->_a)) {
+    if ( $this->_mapper->isAValidAttributeName($attr_name))  {
       $this->_v[$attr_name]=$attr_val;
       return $this->_v[$attr_name];
     } 
@@ -290,6 +302,10 @@ abstract class Model {
    *
    *   Supprime la ligne dans la table corrsepondantà l'objet courant
    *   L'objet doit posséder un OID
+  *   
+  *    @api
+  *    @throws ModelException si l'objet n'a pas d'ID
+  *    @throws MapperException en cas d'erreur dans le map vers la base
    */
   public function delete() {
     
@@ -308,7 +324,9 @@ abstract class Model {
    *
    *   Insère l'objet comme une nouvelle ligne dans la table
    *   
+   *   @api
    *   @return int nombre de lignes insérées 
+   *   @throws MapperException en cas d'erreur dans le map vers la base
    */									
   public function insert() {
 
@@ -319,7 +337,10 @@ abstract class Model {
    *
    *   Update la ligne de la base correspondant à  l'objet courant
    *   
+   *   @api
    *   @return int nombre de lignes insérées 
+   *   @throws ModelException si l'objet n'a pas d'ID
+  *    @throws MapperException en cas d'erreur dans le map vers la base
    */									
   public function update() {
 
@@ -337,13 +358,16 @@ abstract class Model {
      * 
      * find_many : retourne 1 tableau
      * find_one : retourne 1 objet
+     * 
      * le paramètres contient des conditions de selection et d'ordonnancement du résultat
      * $params['conditions'] : array(  att => value, att =>value ... ))
      * $params['orders']['orderby'] = 'att1, att2 ..'
      * $params['orders']['ord'] = DBModel::ORDER_ASC / DBModel::ORDER_DESC
      * 
-     * @param Array $params 
+     * @api
+     * @param Array $params paramètres pour la recherche dans la base
      * @return Array renvoie le tableau d'objet correspondant au résultat de la requête
+     * @throws MapperException en cas d'erreur dans le map vers la base
      */
     
   
@@ -382,9 +406,7 @@ abstract class Model {
 
        if (! ($p===false) ) {
             $att = strtolower(substr($method, 3));
-            if (array_key_exists( $att, $this->_a)) { 
-             return $this->_v[$att];
-            } else return null;
+            return $this->getAttr($att);
              
         }
   
@@ -396,7 +418,7 @@ abstract class Model {
             
             
         $att = strtolower(substr($method, 6)); 
-        if (! array_key_exists( $att, $this->_a) ) {
+        if (! $this->_mapper->isAValidAttributeName( $att) ) {
             return null;
         }
         /* 

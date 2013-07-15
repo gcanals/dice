@@ -11,15 +11,50 @@ require_once dirname(__FILE__).'/model/Categorie.php';
 /**
  * Mock version of a Mapper, used to test models
  */
-class MockMapper implements dice\mapper\iDataMapper {
+class MockArticleMapper implements dice\mapper\iDataMapper {
     
  public static function setDefaultDBConf($conf) { return 1;}
  public static function getDefaultDBConf() {return 'TEST';}
  
+ public function isAValidAttributeName($attname) {
+   if (in_array($attname,  array('id','nom', 'descr', 'tarif','id_categ'))) return true;
+   return false;
+ }
+ 
  public function _insert(\dice\model\Model $m) {return $m;}
  public function _find($args=null) {
      if (is_null($args)) return null;
-     return array('a', 'b','c');
+     if (is_array($args)) $cond=$args['conditions'];
+     if (!is_array($args) || is_null($cond) || !is_array($cond)) return array('a', 'b','c');
+     $a = new Article(); 
+     foreach ($cond as $att=>$val) $a->setAttr($att,$val) ;
+     return array( $a );
+     }
+ public function _update(\dice\model\Model $m) {return $m;}
+ public function _delete(\dice\model\Model $m) {return $m;}
+}
+
+/**
+ * Another Mock version of a Mapper, used to test models
+ */
+class MockCategMapper implements dice\mapper\iDataMapper {
+    
+ public static function setDefaultDBConf($conf) { return 1;}
+ public static function getDefaultDBConf() {return 'TEST';}
+ 
+ public function isAValidAttributeName($attname) {
+   if (in_array($attname,  array('id','nom', 'descr', 'tarif','id_categ'))) return true;
+   return false;
+ }
+ 
+ public function _insert(\dice\model\Model $m) {return $m;}
+ public function _find($args=null) {
+     if (is_null($args)) return null;
+     if (is_array($args)) $cond=$args['conditions'];
+     if (!is_array($args) || is_null($cond) || !is_array($cond)) return array('c1', 'c2','c3');
+     $a = new Categorie(); 
+     foreach ($cond as $att=>$val) $a->setAttr($att,$val) ;
+     return array( $a );
      }
  public function _update(\dice\model\Model $m) {return $m;}
  public function _delete(\dice\model\Model $m) {return $m;}

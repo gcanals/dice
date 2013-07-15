@@ -11,18 +11,18 @@ class ArticleModelTest extends PHPUnit_Framework_TestCase{
     protected $article ;
     
     protected function setUp() {
-      $this->article= new Article( new MockMapper() );
+      $this->article= new Article( new MockArticleMapper() );
     }
     
     /**
      * @test
      */
     public function testgetAttributes() {
-        
+        $this->article->setAttr('id',101);
+        $this->article->setAttr('nom','velo');
+        $this->article->setAttr('tarif',50);
         $this->assertEquals($this->article->getAttributes(),
-                             array('id'=>'number','nom'=>'string', 
-                                   'descr'=>'string', 'tarif'=>'number',
-                                   'id_categ'=>'number'));
+                             array('id','nom','tarif'));
     }
     /**
      * @test
@@ -153,15 +153,15 @@ class ArticleModelTest extends PHPUnit_Framework_TestCase{
      * @depends testgetMapperClass
      */
     public function testsetMapperClass() {
-        Article::setDefaultMapperClass('MockMapper');
-        $this->assertEquals('MockMapper', Article::getDefaultMapperClass());
+        Article::setDefaultMapperClass('MockArticleMapper');
+        $this->assertEquals('MockArticleMapper', Article::getDefaultMapperClass());
     }
     /**
      * @test
      * @depends testsetMapperClass
      */
     public function testfind_one() {
-        Article::setDefaultMapperClass('MockMapper');
+        Article::setDefaultMapperClass('MockArticleMapper');
         $this->assertNull( Article::find_one());
         $this->assertEquals('a', Article::find_one(1));
     }
@@ -170,9 +170,23 @@ class ArticleModelTest extends PHPUnit_Framework_TestCase{
      * @depends testsetMapperClass
      */
     public function testfind_many() {
-        Article::setDefaultMapperClass('MockMapper');
+        Article::setDefaultMapperClass('MockArticleMapper');
         $this->assertNull( Article::find_many());
         $this->assertEquals(array('a', 'b','c'), Article::find_many(1));
+    }
+    
+    /**
+     * @test
+     */
+    public function testGetCategorie() {
+        Categorie::setDefaultMapperClass('MockCategMapper');
+        $this->article->setAttr('id', 1);
+        $this->article->setAttr('nom', 'velo');
+        $this->article->setAttr('tarif', 5.55);
+        $this->article->setAttr('id_categ', 101);
+        $c=new Categorie(); $c->setOid(101);
+        $this->assertEquals(101, $this->article->getCategorie()->getOid());
+        
     }
     
 }
